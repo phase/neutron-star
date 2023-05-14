@@ -6,4 +6,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-melior = "0.7.2"
+melior = { git = "https://github.com/phase/melior.git", branch = "pub-everywhere" }
+mlir-sys = "*"

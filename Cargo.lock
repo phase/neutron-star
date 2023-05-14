@@ -353,8 +353,7 @@ dependencies = [
 [[package]]
 name = "melior"
 version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22a82b9f926bd095737f6b15da9ddcc2f769f7f71dd6dc5565a25e329a5ef79b"
+source = "git+https://github.com/phase/melior.git?branch=pub-everywhere#ed102f710bd9ac20986a04fb4de2f552f1dba60b"
 dependencies = [
  "criterion",
  "melior-macro",
@@ -365,8 +364,7 @@ dependencies = [
 [[package]]
 name = "melior-macro"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1b98c1385a168cce1df9f81e02bec3e3f192e4f2f509414b15e8fc6cc3bb7dc"
+source = "git+https://github.com/phase/melior.git?branch=pub-everywhere#ed102f710bd9ac20986a04fb4de2f552f1dba60b"
 dependencies = [
  "convert_case",
  "once_cell",
@@ -411,6 +409,7 @@ name = "neutron-star"
 version = "0.1.0"
 dependencies = [
  "melior",
+ "mlir-sys",
 ]
 
 [[package]]

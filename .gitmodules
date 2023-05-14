@@ -1,0 +1,3 @@
+[submodule "runtime/ponyc"]
+	path = runtime/ponyc
+	url = git@github.com:ponylang/ponyc.git

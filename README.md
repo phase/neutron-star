@@ -19,6 +19,16 @@ Programming langauge using [MLIR](https://mlir.llvm.org/).
     - core ml support?
   - ml primitives
 
+## Components
+
+- `src/` - Rust crate: compiler using MLIR
+- `runtime/` - Zig exe: runtime using `libponyrt`
+
+Some software required forking:
+
+- [melior](https://github.com/phase/melior/tree/pub-everywhere)
+- [ponyc](https://github.com/phase/ponyc/tree/compile-with-zig)
+
 ## MLIR notes
 
 Notes on the dialects and conversions.

@@ -1,11 +1,13 @@
 use melior::{
     Context,
-    dialect::{arith, DialectRegistry, func},
-    ir::{*, attribute::*, r#type::{FunctionType, MemRefType, IntegerType}, operation::*},
+    dialect::{arith, DialectRegistry, func, index},
+    ir::{*, attribute::*, r#type::{FunctionType, MemRefType, IntegerType, RankedTensorType}, operation::*},
     utility::register_all_dialects,
-    pass::{self, PassManager},
+    pass::{self, PassManager, conversion},
 };
 use mlir_sys::*;
+
+mod ir;
 
 fn main() {
     println!("Hello, world!");
@@ -20,10 +22,11 @@ fn main() {
     let location = Location::unknown(&context);
     let mut module = Module::new(location);
 
-    let _index_type = Type::index(&context);
+    let index_type = Type::index(&context);
     let float32_type = Type::float32(&context);
     let vector2_float32_type = Type::vector(&[2], float32_type);
     let i64_type: Type = IntegerType::new(&context, 64).into();
+    let tensor_type: Type = RankedTensorType::new(&[1], float32_type, None).into();
     let _memref_load_type: Type = MemRefType::new(vector2_float32_type, &[1], None, None).into();
 
     // see https://github.com/raviqqe/melior/issues/180
@@ -82,24 +85,75 @@ fn main() {
         location
     ));
 
+     // testing tensor ops
+     module.body().append_operation(func::func(
+        &context,
+        StringAttribute::new(&context, "firstInTensor"),
+        TypeAttribute::new(FunctionType::new(&context, &[tensor_type], &[float32_type]).into()),
+        {
+            // block arguments must match type attribute arguments
+            let block = Block::new(&[(tensor_type, location)]);
+
+            let constant_op = index::constant(&context, IntegerAttribute::new(0, index_type), location);
+            let constant_op = block.append_operation(constant_op);
+
+            let tensor_extract_op = OperationBuilder::new("tensor.extract", location)
+                .add_operands(&[
+                    // tensor: ranked tensor of any type values
+                    block.argument(0).unwrap().into(),
+                    // indices: index
+                    constant_op.result(0).unwrap().into()
+                ])
+                .add_results(&[float32_type])
+                .build();
+            let tensor_extract_op = block.append_operation(tensor_extract_op);
+
+            block.append_operation(func::r#return(&[tensor_extract_op.result(0).unwrap().into()], location));
+
+            let region = Region::new();
+            region.append_block(block);
+            region
+        },
+        location
+    ));
+
     let module_op = module.as_operation();
     module_op.dump();
     assert!(module_op.verify());
 
-    let pass_manager = PassManager::new(&context);
-    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_math_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_vector_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
-   /* pass_manager.add_pass(pass::conversion::create_tensor_to_linalg());
-    pass_manager.add_pass(pass::conversion::create_linalg_to_standard());
-    pass_manager.add_pass(pass::conversion::create_linalg_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
-    pass_manager.add_pass(pass::conversion::create_gpu_to_llvm()); */
-    pass_manager.run(&mut module).unwrap();
+    if true {
+        // llvm
+        let pass_manager = PassManager::new(&context);
+        pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
+        pass_manager.add_pass(pass::conversion::create_math_to_llvm());
+        pass_manager.add_pass(pass::conversion::create_func_to_llvm());
+        pass_manager.add_pass(pass::conversion::create_vector_to_llvm());
+        pass_manager.add_pass(pass::conversion::create_tensor_to_linalg());
+        pass_manager.add_pass(pass::conversion::create_linalg_to_llvm());
+        pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
+        /* pass_manager.add_pass(pass::conversion::create_tensor_to_linalg());
+        pass_manager.add_pass(pass::conversion::create_linalg_to_standard());
+        pass_manager.add_pass(pass::conversion::create_linalg_to_llvm());
+        pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
+        pass_manager.add_pass(pass::conversion::create_gpu_to_llvm()); */
+        pass_manager.run(&mut module).unwrap();
+    } else {
+        // spirv
+        let pass_manager = PassManager::new(&context);
+        pass_manager.add_pass(pass::conversion::create_arith_to_spirv());
+        pass_manager.add_pass(pass::conversion::create_math_to_spirv());
+        pass_manager.add_pass(pass::conversion::create_func_to_spirv());
+        pass_manager.add_pass(pass::conversion::create_vector_to_spirv());
+        //pass_manager.add_pass(pass::conversion::create_index_to_llvm_pass());
+        /* pass_manager.add_pass(pass::conversion::create_tensor_to_linalg());
+        pass_manager.add_pass(pass::conversion::create_linalg_to_standard());
+        pass_manager.add_pass(pass::conversion::create_linalg_to_llvm());
+        pass_manager.add_pass(pass::conversion::create_mem_ref_to_llvm());
+        pass_manager.add_pass(pass::conversion::create_gpu_to_llvm()); */
+        pass_manager.run(&mut module).unwrap();
+    }
 
     let module_op = module.as_operation();
     module_op.dump();
-    assert!(module_op.verify());
+    assert!(module_op.verify())
 }

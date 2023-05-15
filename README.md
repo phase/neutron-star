@@ -36,8 +36,8 @@ Notes on the dialects and conversions.
 To test lowering MLIR to LLVM IR,
 
 ```bash
-cd test/
-mlir-translate -mlir-to-llvmir ./test.mlir >> test.ll
+cd test/mlir/
+mlir-translate -mlir-to-llvmir ./test_llvm.mlir >> test.ll
 ```
 
 |name|target|

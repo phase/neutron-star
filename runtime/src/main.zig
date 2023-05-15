@@ -3,6 +3,9 @@ const pony = @cImport({
     @cInclude("pony.h");
 });
 
+// Pony runtime Type
+const pony_type = pony.pony_type_t;
+
 // in libponyrt/sched/start.c
 extern "c" fn pony_init(argc: c_int, argv: [*c][*c]u8) c_int;
 

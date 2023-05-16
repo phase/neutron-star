@@ -3,11 +3,15 @@ use melior::{
     dialect::{arith, DialectRegistry, func, index},
     ir::{*, attribute::*, r#type::{FunctionType, MemRefType, IntegerType, RankedTensorType}, operation::*},
     utility::register_all_dialects,
-    pass::{self, PassManager, conversion},
+    pass::{self, PassManager},
 };
 use mlir_sys::*;
 
+mod ast;
+mod parser;
 mod ir;
+mod compiler;
+mod diagnostic;
 
 fn main() {
     println!("Hello, world!");

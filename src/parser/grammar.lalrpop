@@ -1,0 +1,318 @@
+use std::str::FromStr;
+use lalrpop_util::ErrorRecovery;
+use crate::ast::*;
+use generational_arena::Arena;
+
+grammar<'err>(
+    program_arena: &mut ProgramArena,
+    errors: &'err mut Vec<ErrorRecovery<usize, lalrpop_util::lexer::Token<'input>, &'static str>>
+);
+
+pub Program: Vec<Path> = {
+    <imports:Import*> <nodes:Node*> => imports
+};
+
+Import: Path = {
+    "import" <p:Path> => p
+};
+
+Node: NodeIndex = {
+    <access:Access?> "let" <typed_name:TypedName> <expression:("=" <Expression>)?> ";" => {
+        program_arena.node_arena.insert(Node::Variable {
+            access: access.unwrap_or(Access::Internal),
+            name: typed_name,
+            value: expression
+        })
+    },
+    <access:Access?> "fun" <kind:("(" <Comma<Name>> ")")?> <name:Name> <type_params:("[" <Comma<TypedName>> "]")?> "(" <args:Comma<TypedName>> ")" <return_type:(":" <Type>)?> "{" <statements:Statement*> "}" => {
+        let return_type = return_type.unwrap_or(program_arena.type_arena.insert(Type::Base(TypeName {
+           path:Path(vec![]),
+           name: "Void".to_string(),
+           arguments: vec![]
+        })));
+        program_arena.node_arena.insert(Node::Function(AstFunction {
+            access: access.unwrap_or(Access::Internal),
+            name,
+            type_params: type_params.unwrap_or(vec![]),
+            params: args,
+            return_type,
+            statements
+        }))
+    },
+    "fun" <name:Name> <type_params:("[" <Comma<TypedName>> "]")?> "(" <args:Comma<TypedName>> ")" <return_type:(":" <Type>)?> ";" => {
+        let return_type = return_type.unwrap_or(program_arena.type_arena.insert(Type::Base(TypeName {
+           path:Path(vec![]),
+           name: "Void".to_string(),
+           arguments: vec![]
+        })));
+        program_arena.node_arena.insert(Node::FunctionPrototype {
+            name,
+            type_params: type_params.unwrap_or(vec![]),
+            params: args,
+            return_type,
+        })
+    },
+    <access:Access?> "struct" <name:Name> <params:("[" <Comma<TypedName>> "]")?> "{" <children:Node*> "}" => {
+        program_arena.node_arena.insert(Node::Struct {
+            access: access.unwrap_or(Access::Internal),
+            name,
+            params: params.unwrap_or(vec![]),
+            children,
+        })
+    },
+    <access:Access?> "interface" <name:Name> <params:("[" <Comma<TypedName>> "]")?> "{" <children:Node*> "}" => {
+        program_arena.node_arena.insert(Node::Interface {
+            access: access.unwrap_or(Access::Internal),
+            name,
+            params: params.unwrap_or(vec![]),
+            children,
+        })
+    },
+    <access:Access?> "enum" <name:Name> <params:("[" <Comma<TypedName>> "]")?> "{" <variants:Comma<EnumVariant>> "}" => {
+        program_arena.node_arena.insert(Node::Enum {
+            access: access.unwrap_or(Access::Internal),
+            name,
+            params: params.unwrap_or(vec![]),
+            variants,
+        })
+    },
+    <access:Access?> <unique:"unique"?> "type" <name:Name> "=" <typ:Type> ";" => {
+        program_arena.node_arena.insert(Node::TypeAlias {
+            access: access.unwrap_or(Access::Internal),
+            unique: unique.is_some(),
+            name,
+            value: typ,
+        })
+    },
+    ! => { errors.push(<>); program_arena.node_arena.insert(Node::Error) },
+};
+
+EnumVariant: EnumVariant = {
+    <name:Name> <params:("(" <Comma<TypedName>> ")")?>=> {
+        EnumVariant {
+            name,
+            params: params.unwrap_or(vec![]),
+        }
+    }
+};
+
+Statement: StatementIndex = {
+    "let" <typed_name:TypedName> "=" <expression:Expression> ";" => {
+        program_arena.statement_arena.insert(Statement::Let {
+            name: typed_name,
+            value: expression
+        })
+    },
+    "if" <cond:Expression> "{" <block:Statement*> "}"
+    <elifStatements:("else" "if" <Expression> "{" <Statement*> "}")*>
+    <elseStatement:("else" "{" <Statement*> "}")?> => {
+        let mut child_if_statement = match elseStatement {
+            Some(statements) => {
+                let cond = program_arena.expression_arena.insert(Expression::BoolLiteral(true));
+                Some(program_arena.statement_arena.insert(Statement::If {
+                    condition: cond,
+                    body: statements,
+                    else_if: None,
+                }))
+            },
+            None => None,
+        };
+
+        for elifStatement in elifStatements.iter().rev() {
+            let cond = elifStatement.0;
+            let statements = elifStatement.1.clone();
+            child_if_statement = Some(program_arena.statement_arena.insert(Statement::If {
+                condition: cond,
+                body: statements,
+                else_if: child_if_statement,
+            }));
+        }
+        program_arena.statement_arena.insert(Statement::If {
+            condition: cond,
+            body: block,
+            else_if: child_if_statement,
+        })
+    },
+    "return" <expression:Expression> ";" => {
+        program_arena.statement_arena.insert(Statement::Return {
+            value: expression,
+        })
+    },
+    <name:Name> "=" <expression:Expression> ";" => {
+        program_arena.statement_arena.insert(Statement::Assign {
+            name,
+            value: expression,
+        })
+    },
+};
+
+Expression: ExpressionIndex = {
+    BinOp0,
+};
+
+BinOp0: ExpressionIndex = {
+    <l:BinOp0> "and" <r:BinOp1> => program_arena.expression_arena.insert(Expression::BinOp(l, BinOpType::And, r)),
+    <l:BinOp0> "or" <r:BinOp1> => program_arena.expression_arena.insert(Expression::BinOp(l, BinOpType::Or, r)),
+    BinOp1,
+};
+
+BinOp1: ExpressionIndex = {
+    <l:BinOp1> "<" <r:BinOp2> => program_arena.expression_arena.insert(Expression::BinOp(l, BinOpType::LessThan, r)),
+    <l:BinOp1> "<=" <r:BinOp2> => program_arena.expression_arena.insert(Expression::BinOp(l, BinOpType::LessThanEqualTo, r)),
+    <l:BinOp1> ">" <r:BinOp2> => program_arena.expression_arena.insert(Expression::BinOp(l, BinOpType::GreaterThan, r)),
+    <l:BinOp1> ">=" <r:BinOp2> => program_arena.expression_arena.insert(Expression::BinOp(l, BinOpType::GreaterThanEqualTo, r)),
+    BinOp2,
+};
+
+BinOp2: ExpressionIndex = {
+    <l:BinOp2> "*" <r:BinOp3> => program_arena.expression_arena.insert(Expression::BinOp(l, BinOpType::Star, r)),
+    <l:BinOp2> "/" <r:BinOp3> => program_arena.expression_arena.insert(Expression::BinOp(l, BinOpType::ForwardSlash, r)),
+    BinOp3,
+};
+
+BinOp3: ExpressionIndex = {
+    <l:BinOp3> "+" <r:BinOp4> => program_arena.expression_arena.insert(Expression::BinOp(l, BinOpType::Plus, r)),
+    <l:BinOp3> "-" <r:BinOp4> => program_arena.expression_arena.insert(Expression::BinOp(l, BinOpType::Minus, r)),
+    <pointer:BinOp3> ".*" => program_arena.expression_arena.insert(Expression::Dereference {
+        pointer
+    }),
+    <optional:BinOp3> ".?" => program_arena.expression_arena.insert(Expression::Denull {
+        optional
+    }),
+    <value:BinOp3> ".&" => program_arena.expression_arena.insert(Expression::Borrow {
+        value,
+    }),
+    <aggregate:BinOp3> "." <value:BinOp4> => program_arena.expression_arena.insert(Expression::FieldAccessor {
+        aggregate,
+        value,
+    }),
+    BinOp4,
+};
+
+BinOp4: ExpressionIndex = {
+    <function:BinOp4> "(" <args:Comma<Expression>> ")" => program_arena.expression_arena.insert(Expression::FunctionCall {
+        function,
+        args,
+    }),
+    "new" <typ:Type> "in" <allocator:Term> => program_arena.expression_arena.insert(Expression::New {
+        typ,
+        allocator,
+    }),
+    Term,
+}
+
+Term: ExpressionIndex = {
+    <name:Name> => program_arena.expression_arena.insert(Expression::Ref(name)),
+    <num:Num> => program_arena.expression_arena.insert(Expression::NatLiteral(num)),
+    <bool:Bool> => program_arena.expression_arena.insert(Expression::BoolLiteral(bool)),
+    "(" <bin_op:BinOp0> ")" => bin_op,
+};
+
+
+// PARTS
+
+
+TypeName: TypeName = {
+    <name:NamespacedName> <args:("[" <Comma<Type>> "]")?> => {
+        TypeName {
+            path: name.0,
+            name: name.1,
+            arguments: args.unwrap_or(vec![]),
+        }
+    },
+};
+
+Type: TypeIndex = {
+    <simple_type:SimpleType> => {
+        simple_type
+    },
+    "(" <var:Name> ":" <inner_type:SimpleType> "where" <expression:Expression> ")" => {
+        program_arena.type_arena.insert(Type::Refinement(var, inner_type, expression))
+    },
+    <inner_type:SimpleType> "where" <expression:Expression> => {
+        program_arena.type_arena.insert(Type::Refinement("it".to_string(), inner_type, expression))
+    },
+};
+
+SimpleType: TypeIndex = {
+    <type_name:TypeName> => {
+        program_arena.type_arena.insert(Type::Base(type_name))
+    },
+    "{" <fields:Comma<TypedName>> "}" => {
+        program_arena.type_arena.insert(Type::Row(fields))
+    },
+    "&" <typ:SimpleType> => {
+        program_arena.type_arena.insert(Type::Reference(typ, false))
+    },
+    "&mut" <typ:SimpleType> => {
+        program_arena.type_arena.insert(Type::Reference(typ, true))
+    },
+    "?" <typ:SimpleType> => {
+        program_arena.type_arena.insert(Type::Optional(typ))
+    },
+    "(" <args:Comma<Type>> ")" "->" <return_type:SimpleType> => {
+        program_arena.type_arena.insert(Type::Function(args, return_type))
+    },
+}
+
+TypedName: TypedName = {
+    <name:Name> ":" <typ:Type> => {
+        TypedName {
+            name,
+            typ: Some(typ),
+        }
+    },
+    <name:Name> => {
+        TypedName {
+            name,
+            typ: None,
+        }
+    },
+};
+
+NamespacedName: (Path, String) = {
+    <n:(<Name> "::")*> <e:Name> => (Path(n), e),
+};
+
+Path: Path = {
+    <names:(Name "::")*> <e:Name> => {
+        let mut parts = Vec::with_capacity(names.len());
+        for name in names {
+            parts.push(name.0);
+        }
+        parts.push(e);
+        Path(parts)
+    },
+};
+
+Bool: bool = {
+    "true" => true,
+    "false" => false,
+};
+
+Access: Access = {
+    "public" => Access::Public,
+};
+
+Num: i64 = {
+    r"[0-9]+" => i64::from_str(<>).unwrap()
+};
+
+Name: String = {
+    r"[a-zA-Z][a-zA-Z0-9_]*" => <>.to_string()
+};
+
+
+// MACROS
+
+
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};

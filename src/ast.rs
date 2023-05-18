@@ -77,12 +77,22 @@ pub struct TypedName {
     pub typ: Option<TypeIndex>,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum ReferenceCapability {
+    Iso, // &iso ?/ &own
+    Trn, // &trn
+    Val, // &val ?/ &view/&imm/&frozen/&ice
+    Mut, // &mut / &ref
+    Box, // &box / &
+    Tag, // &tag ?/ &id
+}
+
 #[derive(Clone, Debug)]
 pub enum Type {
     Base(TypeName),
     Refinement(String, TypeIndex, ExpressionIndex),
     Row(Vec<TypedName>),
-    Reference(TypeIndex, bool),
+    Reference(TypeIndex, ReferenceCapability),
     Optional(TypeIndex),
     Function(Vec<TypeIndex>, TypeIndex),
 }
@@ -127,11 +137,24 @@ pub enum Access {
 #[derive(Clone, Debug)]
 pub struct AstFunction {
     pub access: Access,
+    pub kind: FunctionKind,
     pub name: String,
     pub type_params: Vec<TypedName>,
     pub params: Vec<TypedName>,
     pub return_type: TypeIndex,
     pub statements: Vec<StatementIndex>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum StructKind {
+    Struct,
+    Actor,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum FunctionKind {
+    Function,
+    Behaviour,
 }
 
 #[derive(Clone, Debug)]
@@ -150,12 +173,14 @@ pub enum Node {
     Function(AstFunction),
     FunctionPrototype {
         name: String,
+        kind: FunctionKind,
         type_params: Vec<TypedName>,
         params: Vec<TypedName>,
         return_type: TypeIndex,
     },
     Struct {
         access: Access,
+        kind: StructKind,
         name: String,
         params: Vec<TypedName>,
         children: Vec<NodeIndex>,

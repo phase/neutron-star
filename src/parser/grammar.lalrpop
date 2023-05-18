@@ -24,7 +24,7 @@ Node: NodeIndex = {
             value: expression
         })
     },
-    <access:Access?> "fun" <kind:("(" <Comma<Name>> ")")?> <name:Name> <type_params:("[" <Comma<TypedName>> "]")?> "(" <args:Comma<TypedName>> ")" <return_type:(":" <Type>)?> "{" <statements:Statement*> "}" => {
+    <access:Access?> <kind:FunctionKind> <name:Name> <type_params:("[" <Comma<TypedName>> "]")?> "(" <args:Comma<TypedName>> ")" <return_type:(":" <Type>)?> "{" <statements:Statement*> "}" => {
         let return_type = return_type.unwrap_or(program_arena.type_arena.insert(Type::Base(TypeName {
            path:Path(vec![]),
            name: "Void".to_string(),
@@ -32,6 +32,7 @@ Node: NodeIndex = {
         })));
         program_arena.node_arena.insert(Node::Function(AstFunction {
             access: access.unwrap_or(Access::Internal),
+            kind,
             name,
             type_params: type_params.unwrap_or(vec![]),
             params: args,
@@ -39,7 +40,7 @@ Node: NodeIndex = {
             statements
         }))
     },
-    "fun" <name:Name> <type_params:("[" <Comma<TypedName>> "]")?> "(" <args:Comma<TypedName>> ")" <return_type:(":" <Type>)?> ";" => {
+    <kind:FunctionKind> <name:Name> <type_params:("[" <Comma<TypedName>> "]")?> "(" <args:Comma<TypedName>> ")" <return_type:(":" <Type>)?> ";" => {
         let return_type = return_type.unwrap_or(program_arena.type_arena.insert(Type::Base(TypeName {
            path:Path(vec![]),
            name: "Void".to_string(),
@@ -47,14 +48,16 @@ Node: NodeIndex = {
         })));
         program_arena.node_arena.insert(Node::FunctionPrototype {
             name,
+            kind,
             type_params: type_params.unwrap_or(vec![]),
             params: args,
             return_type,
         })
     },
-    <access:Access?> "struct" <name:Name> <params:("[" <Comma<TypedName>> "]")?> "{" <children:Node*> "}" => {
+    <access:Access?> <kind:StructKind> <name:Name> <params:("[" <Comma<TypedName>> "]")?> "{" <children:Node*> "}" => {
         program_arena.node_arena.insert(Node::Struct {
             access: access.unwrap_or(Access::Internal),
+            kind,
             name,
             params: params.unwrap_or(vec![]),
             children,
@@ -241,17 +244,30 @@ SimpleType: TypeIndex = {
     "{" <fields:Comma<TypedName>> "}" => {
         program_arena.type_arena.insert(Type::Row(fields))
     },
-    "&" <typ:SimpleType> => {
-        program_arena.type_arena.insert(Type::Reference(typ, false))
-    },
-    "&mut" <typ:SimpleType> => {
-        program_arena.type_arena.insert(Type::Reference(typ, true))
-    },
     "?" <typ:SimpleType> => {
         program_arena.type_arena.insert(Type::Optional(typ))
     },
     "(" <args:Comma<Type>> ")" "->" <return_type:SimpleType> => {
         program_arena.type_arena.insert(Type::Function(args, return_type))
+    },
+    // reference types
+    "&iso" <typ:SimpleType> => {
+        program_arena.type_arena.insert(Type::Reference(typ, ReferenceCapability::Iso))
+    },
+    "&trn" <typ:SimpleType> => {
+        program_arena.type_arena.insert(Type::Reference(typ, ReferenceCapability::Trn))
+    },
+    "&val" <typ:SimpleType> => {
+        program_arena.type_arena.insert(Type::Reference(typ, ReferenceCapability::Val))
+    },
+    "&mut" <typ:SimpleType> => {
+        program_arena.type_arena.insert(Type::Reference(typ, ReferenceCapability::Mut))
+    },
+    "&" <typ:SimpleType> => {
+        program_arena.type_arena.insert(Type::Reference(typ, ReferenceCapability::Box))
+    },
+    "&tag" <typ:SimpleType> => {
+        program_arena.type_arena.insert(Type::Reference(typ, ReferenceCapability::Tag))
     },
 }
 
@@ -293,6 +309,16 @@ Bool: bool = {
 Access: Access = {
     "public" => Access::Public,
 };
+
+StructKind: StructKind = {
+    "struct" => StructKind::Struct,
+    "actor" => StructKind::Actor,
+}
+
+FunctionKind: FunctionKind = {
+    "fun" => FunctionKind::Function,
+    "async" "fun" => FunctionKind::Behaviour,
+}
 
 Num: i64 = {
     r"[0-9]+" => i64::from_str(<>).unwrap()

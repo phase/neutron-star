@@ -87,12 +87,18 @@ pub enum ReferenceCapability {
     Tag, // &tag ?/ &id
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum PointerKind {
+    Tracked, // &iso
+    Raw,     // *iso
+}
+
 #[derive(Clone, Debug)]
 pub enum Type {
     Base(TypeName),
     Refinement(String, TypeIndex, ExpressionIndex),
     Row(Vec<TypedName>),
-    Reference(TypeIndex, ReferenceCapability),
+    Reference(TypeIndex, PointerKind, ReferenceCapability),
     Optional(TypeIndex),
     Function(Vec<TypeIndex>, TypeIndex),
 }
@@ -228,6 +234,9 @@ pub enum Statement {
     Return {
         value: ExpressionIndex,
     },
+    Unsafe {
+        body: Vec<StatementIndex>,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -255,6 +264,9 @@ pub enum Expression {
         optional: ExpressionIndex,
     },
     Borrow {
+        value: ExpressionIndex,
+    },
+    Unsafe {
         value: ExpressionIndex,
     },
 }
@@ -337,6 +349,10 @@ impl fmt::Display for Expression {
             Expression::Borrow { value } => {
                 let (value_index, _) = value.into_raw_parts();
                 write!(f, "{}.&", value_index)
+            }
+            Expression::Unsafe { value } => {
+                let (value_index, _) = value.into_raw_parts();
+                write!(f, "unsafe {}", value_index)
             }
         }
     }

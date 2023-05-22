@@ -147,6 +147,11 @@ Statement: StatementIndex = {
             value: expression,
         })
     },
+    "unsafe" "{" <block:Statement*> "}" => {
+        program_arena.statement_arena.insert(Statement::Unsafe {
+            body: block,
+        })
+    },
 };
 
 Expression: ExpressionIndex = {
@@ -201,6 +206,11 @@ BinOp4: ExpressionIndex = {
         typ,
         allocator,
     }),
+    "unsafe" "{" <value:Expression> "}" => {
+        program_arena.expression_arena.insert(Expression::Unsafe {
+            value,
+        })
+    },
     Term,
 }
 
@@ -252,22 +262,41 @@ SimpleType: TypeIndex = {
     },
     // reference types
     "&iso" <typ:SimpleType> => {
-        program_arena.type_arena.insert(Type::Reference(typ, ReferenceCapability::Iso))
+        program_arena.type_arena.insert(Type::Reference(typ, PointerKind::Tracked, ReferenceCapability::Iso))
     },
     "&trn" <typ:SimpleType> => {
-        program_arena.type_arena.insert(Type::Reference(typ, ReferenceCapability::Trn))
+        program_arena.type_arena.insert(Type::Reference(typ, PointerKind::Tracked, ReferenceCapability::Trn))
     },
     "&val" <typ:SimpleType> => {
-        program_arena.type_arena.insert(Type::Reference(typ, ReferenceCapability::Val))
+        program_arena.type_arena.insert(Type::Reference(typ, PointerKind::Tracked, ReferenceCapability::Val))
     },
     "&mut" <typ:SimpleType> => {
-        program_arena.type_arena.insert(Type::Reference(typ, ReferenceCapability::Mut))
+        program_arena.type_arena.insert(Type::Reference(typ, PointerKind::Tracked, ReferenceCapability::Mut))
     },
     "&" <typ:SimpleType> => {
-        program_arena.type_arena.insert(Type::Reference(typ, ReferenceCapability::Box))
+        program_arena.type_arena.insert(Type::Reference(typ, PointerKind::Tracked, ReferenceCapability::Box))
     },
     "&tag" <typ:SimpleType> => {
-        program_arena.type_arena.insert(Type::Reference(typ, ReferenceCapability::Tag))
+        program_arena.type_arena.insert(Type::Reference(typ, PointerKind::Tracked, ReferenceCapability::Tag))
+    },
+    // raw pointers
+    "*iso" <typ:SimpleType> => {
+        program_arena.type_arena.insert(Type::Reference(typ, PointerKind::Raw, ReferenceCapability::Iso))
+    },
+    "*trn" <typ:SimpleType> => {
+        program_arena.type_arena.insert(Type::Reference(typ, PointerKind::Raw, ReferenceCapability::Trn))
+    },
+    "*val" <typ:SimpleType> => {
+        program_arena.type_arena.insert(Type::Reference(typ, PointerKind::Raw, ReferenceCapability::Val))
+    },
+    "*mut" <typ:SimpleType> => {
+        program_arena.type_arena.insert(Type::Reference(typ, PointerKind::Raw, ReferenceCapability::Mut))
+    },
+    "*" <typ:SimpleType> => {
+        program_arena.type_arena.insert(Type::Reference(typ, PointerKind::Raw, ReferenceCapability::Box))
+    },
+    "*tag" <typ:SimpleType> => {
+        program_arena.type_arena.insert(Type::Reference(typ, PointerKind::Raw, ReferenceCapability::Tag))
     },
 }
 

@@ -21,7 +21,7 @@ impl Compiler {
         let mut parser = Parser::new();
         let parsed_program = parser.parse(path, file_name, code);
         parser.diagnostics.emit_errors();
-        if let Some(mut program) = parsed_program {
+        if let Some(program) = parsed_program {
             let module = self.ir_builder.convert(program);
             self.modules.insert(module);
         }

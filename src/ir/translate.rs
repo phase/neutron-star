@@ -87,7 +87,7 @@ impl IrBuilder {
                 }
                 Type::Refinement(_, _, _) => ctx.unknown_index,
                 Type::Row(_) => ctx.unknown_index,
-                Type::Reference(_, _) => ctx.unknown_index,
+                Type::Reference(_, _, _) => ctx.unknown_index,
                 Type::Optional(_) => ctx.unknown_index,
                 Type::Function(_, _) => ctx.unknown_index,
             }
@@ -169,6 +169,7 @@ impl IrBuilder {
                     value: value_ins
                 });
             }
+            Statement::Unsafe { .. } => {}
         }
     }
 
@@ -223,6 +224,10 @@ impl IrBuilder {
             Expression::Borrow { value } => {
                 let value_ins = self.build_expression(ctx, func, stmt, value, current_block);
                 IrInstruction::Borrow { value: value_ins }
+            }
+            Expression::Unsafe { value } => {
+                let value_ins = self.build_expression(ctx, func, stmt, value, current_block);
+                IrInstruction::Unsafe { value: value_ins }
             }
         };
         ctx.ins(*current_block, ins)

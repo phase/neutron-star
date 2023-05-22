@@ -248,5 +248,8 @@ pub enum IrInstruction {
     Return {
         value: IrInstructionIndex,
     },
+    Unsafe {
+        value: IrInstructionIndex,
+    },
     Error,
 }

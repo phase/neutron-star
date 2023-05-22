@@ -20,6 +20,12 @@ fn main() {
     actor Foo {
         async fun foo(a: &iso Int32, b: &val Int32) {
         }
+
+        async fun bar(a: *Int32, b: *Int32) {
+            unsafe {
+                let x: Int32 = unsafe {a.*};
+            }
+        }
     }
 
     interface CoolInterface {

@@ -1,3 +1,4 @@
+use crate::lang::refcap::ReferenceCapability;
 use std::fmt;
 use std::fmt::Formatter;
 use generational_arena::{Arena, Index};
@@ -75,16 +76,6 @@ impl Program {
 pub struct TypedName {
     pub name: String,
     pub typ: Option<TypeIndex>,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum ReferenceCapability {
-    Iso, // &iso ?/ &own
-    Trn, // &trn
-    Val, // &val ?/ &view/&imm/&frozen/&ice
-    Mut, // &mut / &ref
-    Box, // &box / &
-    Tag, // &tag ?/ &id
 }
 
 #[derive(Clone, Copy, Debug)]

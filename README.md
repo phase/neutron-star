@@ -119,6 +119,10 @@ cd test/emit-test-pony/
 ponyc --pass ir
 ```
 
+### Semantics
+
+> The default for any mutable reference capability is `iso` and the default for any immutable reference capability is `val`.
+
 ### `libponyrt`
 
 `libponyrt` is the runtime library for Pony. `runtime/` uses Zig to build the C source.

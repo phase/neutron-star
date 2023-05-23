@@ -13,6 +13,7 @@ mod parser;
 mod ir;
 mod compiler;
 mod diagnostic;
+mod lang;
 
 fn main() {
     let test_file = "test.ns";

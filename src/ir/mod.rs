@@ -100,6 +100,19 @@ impl IntTy {
     }
 }
 
+impl ToString for IntTy {
+    fn to_string(&self) -> String {
+        match self {
+            ISize => "IntSize".to_string(),
+            I8 => "Int8".to_string(),
+            I16 => "Int16".to_string(),
+            I32 => "Int32".to_string(),
+            I64 => "Int64".to_string(),
+            I128 => "Int128".to_string(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Copy)]
 pub enum UIntTy {
     USize,
@@ -135,6 +148,19 @@ impl UIntTy {
     }
 }
 
+impl ToString for UIntTy {
+    fn to_string(&self) -> String {
+        match self {
+            USize => "USize".to_string(),
+            U8 => "UInt8".to_string(),
+            U16 => "UInt16".to_string(),
+            U32 => "UInt32".to_string(),
+            U64 => "UInt64".to_string(),
+            U128 => "UInt128".to_string(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Copy)]
 pub enum FloatTy {
     F16,
@@ -160,6 +186,17 @@ impl FloatTy {
             F32 => 32,
             F64 => 64,
             F128 => 128,
+        }
+    }
+}
+
+impl ToString for FloatTy {
+    fn to_string(&self) -> String {
+        match self {
+            F16 => "Float16".to_string(),
+            F32 => "Float32".to_string(),
+            F64 => "Float64".to_string(),
+            F128 => "Float128".to_string(),
         }
     }
 }

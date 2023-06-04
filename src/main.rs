@@ -8,7 +8,8 @@ use melior::{
 use mlir_sys::*;
 use crate::{
     compiler::*,
-    lang::*
+    lang::*,
+    ir::print::*,
 };
 
 mod ast;
@@ -166,6 +167,10 @@ fn main() {
         println!("Parsed blocks: {}", module.module_arena.block_arena.len());
         println!("Parsed instructions: {}", module.module_arena.instruction_arena.len());
         println!("Parsed types: {}", module.module_arena.type_arena.len());
+
+        let mut printer = IrPrintManager::new();
+        printer.print(&module);
+        println!("{}", printer.to_string());
     }
 
     println!("parse complete!")

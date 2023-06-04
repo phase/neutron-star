@@ -65,3 +65,16 @@ impl ReferenceCapability {
         }
     }
 }
+
+impl ToString for ReferenceCapability {
+    fn to_string(&self) -> String {
+        match self {
+            ReferenceCapability::Iso => "iso".to_string(),
+            ReferenceCapability::Trn => "trn".to_string(),
+            ReferenceCapability::Mut => "mut".to_string(),
+            ReferenceCapability::Val => "val".to_string(),
+            ReferenceCapability::Box => "box".to_string(),
+            ReferenceCapability::Tag => "tag".to_string(),
+        }
+    }
+}

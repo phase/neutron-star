@@ -1,4 +1,4 @@
-use crate::lang::refcap::ReferenceCapability;
+use crate::lang::{Path, refcap::ReferenceCapability, ptr::PointerKind};
 use std::fmt;
 use std::fmt::Formatter;
 use generational_arena::{Arena, Index};
@@ -7,33 +7,6 @@ pub type TypeIndex = Index;
 pub type NodeIndex = Index;
 pub type StatementIndex = Index;
 pub type ExpressionIndex = Index;
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Path(pub Vec<String>);
-
-impl Path {
-    pub fn new() -> Self {
-        Path(vec![])
-    }
-
-    pub fn of(s: &str) -> Self {
-        Self(vec![s.to_string()])
-    }
-
-    pub fn append(&self, s: String) -> Self {
-        let mut vec = self.0.clone();
-        vec.push(s);
-        Self(vec)
-    }
-
-    pub fn pop(&mut self) -> String {
-        self.0.pop().expect("tried to pop empty path")
-    }
-
-    pub fn to_string(&self) -> String {
-        self.0.join("::")
-    }
-}
 
 #[derive(Clone, Debug)]
 pub struct ProgramArena {
@@ -76,12 +49,6 @@ impl Program {
 pub struct TypedName {
     pub name: String,
     pub typ: Option<TypeIndex>,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum PointerKind {
-    Tracked, // &iso
-    Raw,     // *iso
 }
 
 #[derive(Clone, Debug)]

@@ -1,10 +1,12 @@
 use generational_arena::{Arena, Index};
-use crate::ast::{BinOpType, ExpressionIndex, Path};
+use crate::lang::{Path, ptr::*, refcap::*};
+use crate::ast::{BinOpType, ExpressionIndex};
 use crate::ir::FloatTy::*;
 use crate::ir::IntTy::*;
 use crate::ir::UIntTy::*;
 
 pub(crate) mod translate;
+pub(crate) mod print;
 
 pub type IrTypeIndex = Index;
 pub type IrNodeIndex = Index;
@@ -28,7 +30,7 @@ impl ModuleArena {
         }
     }
 
-    pub fn add_instruction(&mut self, block: &mut IrBlock, ins: IrInstruction) {
+    pub fn _add_instruction(&mut self, block: &mut IrBlock, ins: IrInstruction) {
         let index = self.instruction_arena.insert(ins);
         block.instructions.push(index);
     }
@@ -42,7 +44,7 @@ pub struct Module {
 }
 
 impl Module {
-    pub fn typ(&self, index: IrTypeIndex) -> &IrType {
+    pub fn _typ(&self, index: IrTypeIndex) -> &IrType {
         self.module_arena.type_arena.get(index).unwrap()
     }
 }
@@ -177,7 +179,7 @@ pub enum IrType {
     Base(String),
     Refinement(String, IrTypeIndex, IrBlockIndex),
     Row(Vec<IrTypedName>),
-    Reference(IrTypeIndex, bool),
+    Reference(IrTypeIndex, PointerKind, ReferenceCapability),
     Optional(IrTypeIndex),
     Function(Vec<IrTypeIndex>, IrTypeIndex),
     Void,
@@ -188,6 +190,7 @@ pub enum IrType {
 pub struct IrFunction {
     pub access: Access,
     pub name: String,
+    pub params: Vec<IrTypedName>,
     pub type_params: Vec<IrTypedName>,
     pub return_type: IrTypeIndex,
     pub blocks: Vec<IrBlockIndex>,

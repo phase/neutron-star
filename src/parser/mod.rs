@@ -3,6 +3,7 @@ use lalrpop_util::*;
 use lalrpop_util::lexer::Token;
 use std::ops::Range;
 
+use crate::lang::*;
 use crate::ast::*;
 use crate::diagnostic::*;
 

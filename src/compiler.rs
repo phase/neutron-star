@@ -1,5 +1,5 @@
 use generational_arena::Arena;
-use crate::ast::Path;
+use crate::lang::Path;
 use crate::ir::Module;
 use crate::ir::translate::IrBuilder;
 use crate::parser::Parser;

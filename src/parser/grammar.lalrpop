@@ -1,6 +1,6 @@
 use std::str::FromStr;
 use lalrpop_util::ErrorRecovery;
-use crate::lang::{*, refcap::*};
+use crate::lang::{*, refcap::*, ptr::*};
 use crate::ast::*;
 use generational_arena::Arena;
 

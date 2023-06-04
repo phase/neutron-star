@@ -87,9 +87,19 @@ impl IrBuilder {
                 }
                 Type::Refinement(_, _, _) => ctx.unknown_index,
                 Type::Row(_) => ctx.unknown_index,
-                Type::Reference(_, _, _) => ctx.unknown_index,
+                Type::Reference(base_type, ptr_kind, refcap) => {
+                    let inner_type = self.build_type(ctx, base_type);
+                    ctx.module_arena.type_arena.insert(IrType::Reference(inner_type, *ptr_kind, *refcap))
+                },
                 Type::Optional(_) => ctx.unknown_index,
-                Type::Function(_, _) => ctx.unknown_index,
+                Type::Function(args, return_type) => {
+                    let mut arg_types = Vec::with_capacity(args.len());
+                    for arg in args {
+                        arg_types.push(self.build_type(ctx, arg));
+                    }
+                    let return_type = self.build_type(ctx, return_type);
+                    ctx.module_arena.type_arena.insert(IrType::Function(arg_types, return_type))
+                },
             }
         } else {
             ctx.unknown_index
@@ -108,12 +118,21 @@ impl IrBuilder {
         let mut current_block = ctx.new_block();
         blocks.push(current_block.clone());
 
+        let ir_params: Vec<IrTypedName> = func.params.iter().map(|param| {
+            let param_ir_type = param.typ.map(|ty| self.build_type(ctx, &ty)).unwrap_or(ctx.unknown_index);
+            IrTypedName {
+                name: param.name.clone(),
+                typ: param_ir_type,
+            }
+        }).collect();
+
         for s_index in &func.statements {
             self.build_statement(ctx, func, s_index, &mut current_block);
         }
         IrNode::Function(IrFunction {
             access: Access::from(func.access),
             name: func.name.clone(),
+            params: ir_params,
             type_params: vec![],
             return_type: self.build_type(ctx, &func.return_type),
             blocks,

@@ -6,7 +6,10 @@ use melior::{
     pass::{self, PassManager},
 };
 use mlir_sys::*;
-use crate::{compiler::*};
+use crate::{
+    compiler::*,
+    lang::*
+};
 
 mod ast;
 mod parser;
@@ -157,7 +160,7 @@ fn main() {
     ".to_string();
 
     let mut compiler = Compiler::new();
-    compiler.parse_module(ast::Path::of("test"), test_file.to_string(), test_source);
+    compiler.parse_module(Path::of("test"), test_file.to_string(), test_source);
     for (_index, module) in compiler.modules.iter() {
         println!("Parsed nodes: {}", module.module_arena.node_arena.len());
         println!("Parsed blocks: {}", module.module_arena.block_arena.len());
@@ -213,6 +216,7 @@ fn _main() {
             region.append_block(block);
             region
         },
+        &[],
         location
     ));
 
@@ -241,6 +245,7 @@ fn _main() {
             region.append_block(block);
             region
         },
+        &[],
         location
     ));
 
@@ -273,6 +278,7 @@ fn _main() {
             region.append_block(block);
             region
         },
+        &[],
         location
     ));
 

@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use super::Module;
 use crate::{lang::*, ir::*};
 
@@ -76,12 +78,19 @@ impl IrPrintManager {
                     self.print_type(arena, typ)
                 }).unwrap_or("unknown_type".to_string());
                 self.printer.write(return_type);
-                self.printer.write("\n");
+                self.printer.write(":\n");
 
                 // function body
                 self.printer.indent();
-                for _block in func.blocks.iter() {
-                    //self.print_block(arena, block);
+                for (i, block_index) in func.blocks.iter().enumerate() {
+                    let block = arena.block_arena.get(*block_index).expect(format!("where did block {:?} go??", block_index).as_str());
+                    self.printer.write(format!("block#{}:\n", i));
+                    self.printer.indent();
+                    for (j, instruction_index) in block.instructions.iter().enumerate() {
+                        let instruction = arena.instruction_arena.get(*instruction_index).expect(format!("where did instruction {:?} go??", instruction_index).as_str());
+                        self.printer.write(format!("%{} = {}\n", j, self.print_instruction(arena, instruction)));
+                    }
+                    self.printer.dedent();
                 }
                 self.printer.dedent();
                 self.printer.write("\n");
@@ -105,6 +114,8 @@ impl IrPrintManager {
             IrType::UInt(uint) => uint.to_string(),
             IrType::Int(int) => int.to_string(),
             IrType::Float(float) => float.to_string(),
+            IrType::Void => "Void".to_string(),
+            IrType::Unknown => "Unknown".to_string(),
             IrType::Reference(inner, ptr_kind, refcap) => {
                 let inner_type = arena.type_arena.get(*inner).map(|typ| {
                     self.print_type(arena, typ)
@@ -117,7 +128,23 @@ impl IrPrintManager {
 
                 format!("{}{} {}", ptr_kind, refcap.to_string(), inner_type)
             },
-            x => format!("unknown_type[{:?}]", x),
+            x => format!("bad_type[{:?}]", x),
+        }
+    }
+
+    fn print_instruction(&self, arena: &ModuleArena, ins: &IrInstruction) -> String {
+        /*let to_string = |i: &Index| {
+            arena.instruction_arena.get(*i).map(|ins| {
+                self.print_instruction(arena, ins)
+            }).unwrap_or("bad_ins".to_string())
+        };*/
+
+        match ins {
+            IrInstruction::BoolLiteral(b) => format!("{}", b),
+            IrInstruction::NatLiteral(n) => format!("{}", n),
+            IrInstruction::Branch { condition, true_branch, false_branch } => format!("branch {:?} {:?} {:?}", condition, true_branch, false_branch),
+            IrInstruction::Return { value } => format!("return {:?}", value),
+            x => format!("bad_ins[{:?}]", x),
         }
     }
 }

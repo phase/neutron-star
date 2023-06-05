@@ -17,7 +17,7 @@ impl<'ctx> IrBuilderContext<'ctx> {
 
         IrBuilderContext {
             program,
-            module_arena: ModuleArena::new(),
+            module_arena,
             void_index,
             unknown_index,
         }
@@ -119,7 +119,7 @@ impl IrBuilder {
         blocks.push(current_block.clone());
 
         let ir_params: Vec<IrTypedName> = func.params.iter().map(|param| {
-            let param_ir_type = param.typ.map(|ty| self.build_type(ctx, &ty)).unwrap_or(ctx.unknown_index);
+            let param_ir_type = param.typ.map_or(ctx.unknown_index, |ty| self.build_type(ctx, &ty));
             IrTypedName {
                 name: param.name.clone(),
                 typ: param_ir_type,

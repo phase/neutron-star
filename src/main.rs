@@ -168,6 +168,10 @@ fn main() {
         println!("Parsed instructions: {}", module.module_arena.instruction_arena.len());
         println!("Parsed types: {}", module.module_arena.type_arena.len());
 
+        for (i, typ) in module.module_arena.type_arena.iter() {
+            println!("  Type: #{:?} {:?}", i, typ);
+        }
+
         let mut printer = IrPrintManager::new();
         printer.print(&module);
         println!("{}", printer.to_string());

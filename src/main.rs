@@ -18,6 +18,7 @@ mod ir;
 mod compiler;
 mod diagnostic;
 mod lang;
+mod mlir;
 
 fn main() {
     let test_file = "test.ns";

@@ -2,6 +2,10 @@
 
 Programming langauge using [MLIR](https://mlir.llvm.org/).
 
+Last tested with:
+- Rust 1.72.0
+- Zig 0.10.0
+
 ## This looks like a plan
 
 - [melior](https://github.com/raviqqe/melior) for high level Rust usage
@@ -214,14 +218,14 @@ In `test/emit-test-pony/main.pony`, the `Main` actor is turned into this type:
   ptr null,
   ptr null,
   ptr null,
-  ptr null, 
-  ptr null, 
-  ptr null, 
-  ptr @Main_Dispatch, 
-  ptr null, 
-  i32 -1, 
+  ptr null,
+  ptr null,
+  ptr null,
+  ptr @Main_Dispatch,
+  ptr null,
+  i32 -1,
   ptr @31,
-  ptr null, 
+  ptr null,
   [2 x ptr] [ptr @Main_runtime_override_defaults_oo, ptr @41]
 }
 

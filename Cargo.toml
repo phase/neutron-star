@@ -9,7 +9,7 @@ edition = "2021"
 lalrpop = "0.20.0"
 
 [dependencies]
-melior = "0.9.1"
+melior = "0.11.0"
 mlir-sys = "*"
 lalrpop-util = { version = "0.20.0", features = ["lexer"] }
 regex = "1"

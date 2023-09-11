@@ -47,18 +47,19 @@ impl IrBuilder {
     pub fn convert(&self, program: Program) -> Module {
         let mut ctx = IrBuilderContext::new(&program);
         for (_index, node) in program.program_arena.node_arena.iter() {
+            use Node::*;
             match node {
-                Node::TypeAlias { .. } => {}
-                Node::Variable { .. } => {}
-                Node::Function(ast_function) => {
+                TypeAlias { .. } => {}
+                Variable { .. } => {}
+                Function(ast_function) => {
                     let node = self.build_function(&mut ctx, ast_function);
                     ctx.module_arena.node_arena.insert(node);
                 }
-                Node::FunctionPrototype { .. } => {}
-                Node::Struct { .. } => {}
-                Node::Enum { .. } => {}
-                Node::Interface { .. } => {}
-                Node::Error => {}
+                FunctionPrototype { .. } => {}
+                Struct { .. } => {}
+                Enum { .. } => {}
+                Interface { .. } => {}
+                Error => {}
             }
         }
         Module {
@@ -71,8 +72,9 @@ impl IrBuilder {
 
     fn build_type(&self, ctx: &mut IrBuilderContext, ast_type: &TypeIndex) -> IrTypeIndex {
         if let Some(ast_type) = ctx.program.program_arena.type_arena.get(*ast_type) {
+            use Type::*;
             match ast_type {
-                Type::Base(name) => {
+                Base(name) => {
                     if let Some(int_type) = IntTy::from(&name.name) {
                         ctx.module_arena.type_arena.insert(IrType::Int(int_type))
                     } else if let Some(int_type) = UIntTy::from(&name.name) {
@@ -85,14 +87,14 @@ impl IrBuilder {
                         ctx.unknown_index
                     }
                 }
-                Type::Refinement(_, _, _) => ctx.unknown_index,
-                Type::Row(_) => ctx.unknown_index,
-                Type::Reference(base_type, ptr_kind, refcap) => {
+                Refinement(_, _, _) => ctx.unknown_index,
+                Row(_) => ctx.unknown_index,
+                Reference(base_type, ptr_kind, refcap) => {
                     let inner_type = self.build_type(ctx, base_type);
                     ctx.module_arena.type_arena.insert(IrType::Reference(inner_type, *ptr_kind, *refcap))
                 },
-                Type::Optional(_) => ctx.unknown_index,
-                Type::Function(args, return_type) => {
+                Optional(_) => ctx.unknown_index,
+                Function(args, return_type) => {
                     let mut arg_types = Vec::with_capacity(args.len());
                     for arg in args {
                         arg_types.push(self.build_type(ctx, arg));
@@ -140,9 +142,10 @@ impl IrBuilder {
     }
 
     fn build_statement(&self, ctx: &mut IrBuilderContext, func: &AstFunction, s_index: &StatementIndex, current_block: &mut IrBlockIndex) {
+        use Statement::*;
         let stmt = ctx.program.statement(s_index.clone());
         match stmt {
-            Statement::If { condition, body, else_if } => {
+            If { condition, body, else_if } => {
                 let cond_ins = self.build_expression(ctx, func, stmt, condition, current_block);
                 // make the blocks we can branch to
                 let true_branch = ctx.new_block();
@@ -168,7 +171,7 @@ impl IrBuilder {
                     self.build_statement(ctx, func, stmt, current_block);
                 }
             }
-            Statement::Call { function, args } => {
+            Call { function, args } => {
                 let fun_ins = self.build_expression(ctx, func, stmt, function, current_block);
                 let mut arg_insx = Vec::with_capacity(args.len());
                 for arg in args {
@@ -180,32 +183,33 @@ impl IrBuilder {
                     args: arg_insx,
                 });
             }
-            Statement::Let { .. } => {}
-            Statement::Assign { .. } => {}
-            Statement::Return { value } => {
+            Let { .. } => {}
+            Assign { .. } => {}
+            Return { value } => {
                 let value_ins = self.build_expression(ctx, func, stmt, value, current_block);
                 ctx.ins(*current_block, IrInstruction::Return {
                     value: value_ins
                 });
             }
-            Statement::Unsafe { .. } => {}
+            Unsafe { .. } => {}
         }
     }
 
     fn build_expression(&self, ctx: &mut IrBuilderContext, func: &AstFunction,
                         stmt: &Statement, exp: &ExpressionIndex, current_block: &mut IrBlockIndex) -> IrInstructionIndex {
+        use Expression::*;
         let exp = ctx.program.expression(*exp);
         // let todo = IrInstruction::Ref("TODO".to_string());
         let ins = match exp {
-            Expression::Ref(s) => IrInstruction::Ref(s.clone()),
-            Expression::NatLiteral(i) => IrInstruction::NatLiteral(i.clone()),
-            Expression::BoolLiteral(b) => IrInstruction::BoolLiteral(b.clone()),
-            Expression::BinOp(lhs, op, rhs) => {
+            Ref(s) => IrInstruction::Ref(s.clone()),
+            NatLiteral(i) => IrInstruction::NatLiteral(i.clone()),
+            BoolLiteral(b) => IrInstruction::BoolLiteral(b.clone()),
+            BinOp(lhs, op, rhs) => {
                 let lhs_ins = self.build_expression(ctx, func, stmt, lhs, current_block);
                 let rhs_ins = self.build_expression(ctx, func, stmt, rhs, current_block);
                 IrInstruction::BinOp(lhs_ins, op.clone(), rhs_ins)
             }
-            Expression::FieldAccessor { aggregate, value } => {
+            FieldAccessor { aggregate, value } => {
                 let agg_ins = self.build_expression(ctx, func, stmt, aggregate, current_block);
                 let value_ins = self.build_expression(ctx, func, stmt, value, current_block);
                 IrInstruction::FieldAccessor {
@@ -213,7 +217,7 @@ impl IrBuilder {
                     value: value_ins,
                 }
             }
-            Expression::FunctionCall { function, args } => {
+            FunctionCall { function, args } => {
                 let fun_ins = self.build_expression(ctx, func, stmt, function, current_block);
                 let mut arg_insx = Vec::with_capacity(args.len());
                 for arg in args {
@@ -225,26 +229,26 @@ impl IrBuilder {
                     args: arg_insx,
                 }
             }
-            Expression::New { typ, allocator } => {
+            New { typ, allocator } => {
                 let alloc_ins = self.build_expression(ctx, func, stmt, allocator, current_block);
                 IrInstruction::New {
                     typ: self.build_type(ctx, typ),
                     allocator: alloc_ins,
                 }
             }
-            Expression::Dereference { pointer } => {
+            Dereference { pointer } => {
                 let pointer_ins = self.build_expression(ctx, func, stmt, pointer, current_block);
                 IrInstruction::Dereference { pointer: pointer_ins }
             }
-            Expression::Denull { optional } => {
+            Denull { optional } => {
                 let optional_ins = self.build_expression(ctx, func, stmt, optional, current_block);
                 IrInstruction::Denull { optional: optional_ins }
             }
-            Expression::Borrow { value } => {
+            Borrow { value } => {
                 let value_ins = self.build_expression(ctx, func, stmt, value, current_block);
                 IrInstruction::Borrow { value: value_ins }
             }
-            Expression::Unsafe { value } => {
+            Unsafe { value } => {
                 let value_ins = self.build_expression(ctx, func, stmt, value, current_block);
                 IrInstruction::Unsafe { value: value_ins }
             }

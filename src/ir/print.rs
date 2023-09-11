@@ -1,4 +1,4 @@
-use std::ops::Deref;
+use std::{ops::Deref, collections::HashMap};
 
 use super::Module;
 use crate::{lang::*, ir::*};
@@ -82,13 +82,14 @@ impl IrPrintManager {
 
                 // function body
                 self.printer.indent();
+                let mut instruction_names: HashMap<Index, String> = HashMap::new();
                 for (i, block_index) in func.blocks.iter().enumerate() {
                     let block = arena.block_arena.get(*block_index).expect(format!("where did block {:?} go??", block_index).as_str());
                     self.printer.write(format!("block#{}:\n", i));
                     self.printer.indent();
                     for (j, instruction_index) in block.instructions.iter().enumerate() {
                         let instruction = arena.instruction_arena.get(*instruction_index).expect(format!("where did instruction {:?} go??", instruction_index).as_str());
-                        self.printer.write(format!("%{} = {}\n", j, self.print_instruction(arena, instruction)));
+                        self.printer.write(format!("%{} = {}\n", j, self.print_instruction(&mut instruction_names, arena, instruction)));
                     }
                     self.printer.dedent();
                 }
@@ -109,14 +110,15 @@ impl IrPrintManager {
     }
 
     fn print_type(&self, arena: &ModuleArena, typ: &IrType) -> String {
+        use IrType::*;
         match typ {
-            IrType::Bool => "Bool".to_string(),
-            IrType::UInt(uint) => uint.to_string(),
-            IrType::Int(int) => int.to_string(),
-            IrType::Float(float) => float.to_string(),
-            IrType::Void => "Void".to_string(),
-            IrType::Unknown => "Unknown".to_string(),
-            IrType::Reference(inner, ptr_kind, refcap) => {
+            Bool => "Bool".to_string(),
+            UInt(uint) => uint.to_string(),
+            Int(int) => int.to_string(),
+            Float(float) => float.to_string(),
+            Void => "Void".to_string(),
+            Unknown => "Unknown".to_string(),
+            Reference(inner, ptr_kind, refcap) => {
                 let inner_type = arena.type_arena.get(*inner).map(|typ| {
                     self.print_type(arena, typ)
                 }).unwrap_or("unknown_type".to_string());
@@ -132,18 +134,28 @@ impl IrPrintManager {
         }
     }
 
-    fn print_instruction(&self, arena: &ModuleArena, ins: &IrInstruction) -> String {
-        /*let to_string = |i: &Index| {
-            arena.instruction_arena.get(*i).map(|ins| {
-                self.print_instruction(arena, ins)
-            }).unwrap_or("bad_ins".to_string())
-        };*/
+    fn print_instruction(&self, instruction_map: &mut HashMap<Index, String>, arena: &ModuleArena, ins: &IrInstruction) -> String {
+        let mut to_string = |i: &Index| {
+            if let Some(x) = instruction_map.get(i) {
+                return x.clone();
+            }
+            let name = format!("%{}", instruction_map.len());
+            instruction_map.insert(*i, name.clone());
+            return name;
+        };
 
+        use IrInstruction::*;
         match ins {
-            IrInstruction::BoolLiteral(b) => format!("{}", b),
-            IrInstruction::NatLiteral(n) => format!("{}", n),
-            IrInstruction::Branch { condition, true_branch, false_branch } => format!("branch {:?} {:?} {:?}", condition, true_branch, false_branch),
-            IrInstruction::Return { value } => format!("return {:?}", value),
+            BoolLiteral(b) => format!("{}", b),
+            NatLiteral(n) => format!("{}", n),
+            Branch { condition, true_branch, false_branch } => format!("branch {} {} {}", to_string(condition), to_string(true_branch), to_string(false_branch)),
+            Return { value } => format!("return {}", to_string(value)),
+            BinOp(a, op, b) => format!("binop.`{}` {} {}", op, to_string(a), to_string(b)),
+            Ref(a) => format!("ref %{}", a),
+            FunctionCall { function, args } => format!("call {} ({})", to_string(function), args.iter().map(|i| to_string(i)).collect::<Vec<String>>().join(", ")),
+            New { typ, allocator } => format!("new {} {}", to_string(typ), to_string(allocator)),
+            Dereference { pointer } => format!("deref.`&` {}", to_string(pointer)),
+            Denull { optional } => format!("denull.`!!` {}", to_string(optional)),
             x => format!("bad_ins[{:?}]", x),
         }
     }

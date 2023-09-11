@@ -253,7 +253,7 @@ impl IrBlock {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum IrInstruction {
     Ref(String),
     NatLiteral(i64),
